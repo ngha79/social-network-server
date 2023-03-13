@@ -5,7 +5,7 @@ const { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } = process.env;
 const tokenUtils = {
   generateAccessToken: async (data) => {
     if (!data) return null;
-    return await jwt.sign({ data }, ACCESS_TOKEN_SECRET, { expiresIn: "10m" });
+    return await jwt.sign({ data }, ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
   },
 
   verifyAccessToken: async (token) => {

@@ -23,11 +23,25 @@ const UserSchema = Schema(
     friends: [
       {
         type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    invitedFriends: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    sendInvite: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
       },
     ],
     posts: [
       {
         type: Schema.Types.ObjectId,
+        ref: "Post",
       },
     ],
     avatar: {

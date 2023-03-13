@@ -6,6 +6,7 @@ const createError = require("http-errors");
 
 // Router
 const authRouter = require("./api/routes/auth");
+const userRouter = require("./api/routes/user");
 
 const PORT = process.env.PORT;
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 
 app.use("/auth", authRouter);
+app.use("/user", userRouter);
 
 app.use((req, res, next) => {
   next(createError.NotFound("This route does not exist!"));
