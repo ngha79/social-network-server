@@ -25,6 +25,10 @@ const register = async (req, res, next) => {
     if (emailExist) {
       return next(createError.InternalServerError("Email đã tồn tại!"));
     }
+    if (req.file) {
+      let avatar = { url: req.file.path, public_id: req.file.filename };
+      req.body.avatar = avatar;
+    }
     const newUser = await UserModel.create(req.body);
     return res.json(newUser);
   } catch (error) {

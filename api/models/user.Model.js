@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
-const UserSchema = Schema(
+const UserSchema = new Schema(
   {
     name: {
       type: String,
@@ -47,6 +47,8 @@ const UserSchema = Schema(
     avatar: {
       url: {
         type: String,
+        default:
+          "https://res.cloudinary.com/dlzulba2u/image/upload/v1676655890/avatar/djozn3vydbasahhrntiu.jpg",
       },
       public_id: {
         type: String,
