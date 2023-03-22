@@ -56,8 +56,8 @@ const UserSchema = new Schema(
     },
     gender: {
       type: String,
-      enum: ["Male", "Female", "Other"],
-      default: "Male",
+      enum: ["Nam", "Nữ", "Khác"],
+      default: "Nam",
     },
     dateOfBirth: {
       type: Date,

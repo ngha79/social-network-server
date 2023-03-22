@@ -30,7 +30,7 @@ const register = async (req, res, next) => {
       req.body.avatar = avatar;
     }
     const newUser = await UserModel.create(req.body);
-    return res.json(newUser);
+    return res.json({ message: "Tạo tài khoản thành công.", newUser });
   } catch (error) {
     console.log(error.message);
     next(createError.InternalServerError(error.message));
@@ -44,7 +44,7 @@ const login = async (req, res, next) => {
     if (error) {
       return next(createError.InternalServerError(error));
     }
-    const user = await UserModel.findOne({ email });
+    let user = await UserModel.findOne({ email });
     if (!user) return next(createError.NotFound("Email không tồn tại!"));
     const checkPassword = await user.isComparePassword(password);
     if (!checkPassword)
@@ -54,8 +54,11 @@ const login = async (req, res, next) => {
     const { token, refreshToken } = await generateAccessTokenAndRefreshToken(
       user.id
     );
+    user = await UserModel.findOne({ email })
+      .populate("friends", "-password -refreshToken")
+      .select("-password -refreshToken");
 
-    return res.json({ token, refreshToken });
+    return res.json({ token, refreshToken, user });
   } catch (error) {
     console.log(error);
     next(createError.InternalServerError(error.message));
@@ -65,9 +68,9 @@ const login = async (req, res, next) => {
 const refreshToken = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
-    const { data: id } = await verifyRefreshToken(refreshToken);
+    const { data } = await verifyRefreshToken(refreshToken);
     const user = UserModel.findOne({
-      id,
+      data,
       refreshToken: {
         $elemMatch: { refreshToken: refreshToken },
       },
@@ -75,7 +78,7 @@ const refreshToken = async (req, res, next) => {
     if (!user) {
       next(createError.Unauthorized("Not authorize"));
     }
-    const token = await generateAccessToken(id);
+    const token = await generateAccessToken(data);
     res.json(token);
   } catch (error) {
     next(createError.InternalServerError(error.message));

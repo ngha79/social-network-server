@@ -2,6 +2,20 @@ const createError = require("http-errors");
 const ChatModel = require("../models/chat.Model");
 const MessageModel = require("../models/message.Model");
 
+const getMessages = async (req, res, next) => {
+  try {
+    const { chatId } = req.params;
+    const messages = await MessageModel.find({ chat: chatId }).populate(
+      "senderId",
+      "-password -refreshToken"
+    );
+    res.json({ chatId: chatId, messages });
+  } catch (error) {
+    console.log(error);
+    next(createError.InternalServerError("Server error"));
+  }
+};
+
 const createMessage = async (req, res, next) => {
   let { chat, senderId, receiver } = req.body;
   let image;
@@ -20,7 +34,7 @@ const createMessage = async (req, res, next) => {
     }
 
     const newMessage = await MessageModel.create(req.body);
-    res.json(newMessage);
+    res.json(await newMessage.populate("senderId", "-password -refreshToken"));
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -38,9 +52,9 @@ const deleteMessage = async (req, res, next) => {
         isDeleted: true,
       },
       { new: true }
-    );
+    ).populate("senderId", "-password -refreshToken");
 
-    res.json({ message: "Delete success.", message });
+    res.json(message);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -57,8 +71,8 @@ const likeMessage = async (req, res, next) => {
         $addToSet: { likes: id },
       },
       { new: true }
-    );
-    res.json({ message: "Like message success.", likeMessage });
+    ).populate("senderId", "-password -refreshToken");
+    res.json(likeMessage);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -75,14 +89,15 @@ const removeLikeMessage = async (req, res, next) => {
         $pull: { likes: id },
       },
       { new: true }
-    );
-    res.json({ message: "Remove like message success.", removelikeMessage });
+    ).populate("senderId", "-password -refreshToken");
+    res.json(removelikeMessage);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
 };
 
 module.exports = {
+  getMessages,
   createMessage,
   deleteMessage,
   likeMessage,

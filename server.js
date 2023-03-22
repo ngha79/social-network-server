@@ -4,6 +4,11 @@ require("./config/connectDB");
 const cors = require("cors");
 const createError = require("http-errors");
 const bodyParser = require("body-parser");
+const http = require("http");
+const socketio = require("socket.io");
+
+//socket
+const socket = require("./config/socket");
 
 // Router
 const authRouter = require("./api/routes/auth");
@@ -16,10 +21,22 @@ const messageRouter = require("./api/routes/message");
 const PORT = process.env.PORT;
 const app = express();
 
-app.use(cors());
+//config
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+  })
+);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+//create server socket
+const server = http.createServer(app);
+const io = socketio(server);
+socket(io);
+
+// router
 app.use("/auth", authRouter);
 app.use("/user", userRouter);
 app.use("/post", postRouter);
@@ -32,7 +49,7 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  res.json({
+  res.status(err.status || 500).json({
     status: err.status || 500,
     message: err.message,
   });

@@ -5,7 +5,7 @@ const createError = require("http-errors");
 
 const checkAuth = async (req, res, next) => {
   try {
-    const token = req.header("Authorization").split(" ")[1];
+    const token = req.headers.authorization.split(" ")[1];
     const { data } = await verifyAccessToken(token);
     const user = await UserModel.findById(data).select(
       "-password -refreshToken"

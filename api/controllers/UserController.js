@@ -1,5 +1,6 @@
 const createError = require("http-errors");
 const { default: mongoose, isValidObjectId } = require("mongoose");
+const ChatModel = require("../models/chat.Model");
 const UserModel = require("../models/user.Model");
 
 const changePassword = async (req, res, next) => {
@@ -52,7 +53,28 @@ const getUserByName = async (req, res, next) => {
 const getUserById = async (req, res, next) => {
   const { id } = req.params;
   try {
-    const user = await UserModel.findById(id).select("-password -refreshToken");
+    const user = await UserModel.findById(id)
+      .populate("friends", "-password -refreshToken")
+      .populate({
+        path: "posts",
+        populate: [
+          {
+            path: "comments",
+            populate: [
+              {
+                path: "postedBy reply.postedBy",
+                select: "-password -refreshToken",
+              },
+            ],
+          },
+          {
+            path: "author",
+            select: "-password -refreshToken",
+          },
+        ],
+        options: { sort: { createdAt: -1 } },
+      })
+      .select("-password -refreshToken");
     if (!user) {
       next(createError.NotFound("Không tìm thấy người dùng!"));
     }
@@ -93,7 +115,7 @@ const sendFriendInvitation = async (req, res, next) => {
     await sess.commitTransaction();
     sess.endSession();
 
-    res.json({ user, friend });
+    res.json(friend);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -115,7 +137,6 @@ const acceptFriend = async (req, res, next) => {
     friend = await UserModel.findById(userAccept).select(
       "-password -refreshToken"
     );
-    console.log(friend);
     if (!friend) {
       return next(createError.InternalServerError("Server error!"));
     }
@@ -129,11 +150,12 @@ const acceptFriend = async (req, res, next) => {
     friend.friends.addToSet(id);
     friend.sendInvite.pull(id);
     await friend.save();
+    await ChatModel.create({ members: [userAccept, id] });
     session.commitTransaction();
     session.endSession();
     //end session
 
-    res.json({ user, friend });
+    res.json(friend);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -161,9 +183,7 @@ const deleteFriend = async (req, res, next) => {
     session.commitTransaction();
     session.endSession();
 
-    res.json({
-      message: "Xóa kết bạn thành công.",
-    });
+    res.json(friend);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -191,7 +211,7 @@ const deleteSendFriend = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.json({ message: "Xóa lời gửi kết bạn thành công." });
+    res.json(userReceiver);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -219,7 +239,7 @@ const deleteInvitedFriend = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.json({ message: "Xóa lời mời kết bạn thành công." });
+    res.json(userInvited);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -242,7 +262,9 @@ const getAllSendFriend = async (req, res, next) => {
   try {
     const sendInvite = await UserModel.find({
       invitedFriends: { $in: [id] },
-    }).select("-password -refreshToken");
+    })
+      .select("-password -refreshToken")
+      .limit(4);
     res.json(sendInvite);
   } catch (error) {
     next(createError.InternalServerError(error.message));
@@ -254,8 +276,36 @@ const getAllInvitedFriends = async (req, res, next) => {
   try {
     const invitedFriends = await UserModel.find({
       sendInvite: { $in: [id] },
-    }).select("-password -refreshToken");
+    })
+      .select("-password -refreshToken")
+      .limit(4);
     res.json(invitedFriends);
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
+  }
+};
+
+const getUserIsNotFriend = async (req, res, next) => {
+  const { id } = req.user;
+  try {
+    const user = await UserModel.findById(id);
+    const isNotFriend = await UserModel.find({
+      $or: [
+        {
+          _id: {
+            $nin: [
+              ...user.friends,
+              id,
+              ...user.sendInvite,
+              ...user.invitedFriends,
+            ],
+          },
+        },
+      ],
+    })
+      .limit(4)
+      .select("_id avatar name");
+    res.json(isNotFriend);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -273,4 +323,5 @@ module.exports = {
   getAllFriend,
   getAllSendFriend,
   getAllInvitedFriends,
+  getUserIsNotFriend,
 };

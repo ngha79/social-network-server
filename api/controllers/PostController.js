@@ -23,13 +23,22 @@ const getPostByUserId = async (req, res, next) => {
   const { userId } = req.params;
   try {
     const posts = await PostModel.find({ author: userId })
-      .sort({ createdAt: -1 })
       .populate("author", "-password -refreshToken")
-      .populate("likes", "-password -refreshToken")
-      .populate("comments", "-password -refreshToken");
+      .populate({
+        path: "comments",
+        populate: [
+          {
+            path: "postedBy reply.postedBy",
+            select: "-password -refreshToken",
+          },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
     if (!posts) return next(createError.InternalServerError("Server error!"));
     res.json({ posts });
   } catch (error) {
+    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -38,7 +47,6 @@ const createPost = async (req, res, next) => {
   let imageUrl = [];
   let imageId = [];
   let { body } = req;
-  console.log(req.files);
   if (req.files) {
     req.files.map((image) => {
       imageUrl.push(image.path);
@@ -72,34 +80,37 @@ const createPost = async (req, res, next) => {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await createPost.save({ session: sess });
-    user.post.push(createPost);
+    user.posts.push(createPost._id);
     await user.save({ session: sess });
     await sess.commitTransaction();
   } catch (error) {
-    cloudinary.api.delete_resources(imageid);
+    console.log(error);
+    cloudinary.api.delete_resources(imageId);
     return next(
       createError.InternalServerError(
         "Có lỗi gì đó đã xảy ra vui lòng thử lại sau ít phút!"
       )
     );
   }
-  res.status(200).json({
-    post: (
-      await createPost.populate("author", "-password -refreshToken")
-    ).toObject(),
-  });
+  res
+    .status(200)
+    .json(
+      (
+        await createPost.populate("author", "-password -refreshToken")
+      ).toObject()
+    );
 };
 
 const updatePost = async (req, res, next) => {
   try {
     const { postid } = req.params;
-    const { userid } = req.user;
+    const { id } = req.user;
     const author = await PostModel.findById(postid).populate(
       "author",
       "-password -refreshToken"
     );
     const authorid = author.author.id;
-    if (userid !== authorid)
+    if (id !== authorid)
       return next(
         createError.InternalServerError(
           "Bạn không được cho phép để làm điều này!"
@@ -129,11 +140,14 @@ const updatePost = async (req, res, next) => {
 const deletePost = async (req, res, next) => {
   const { postid } = req.params;
   try {
-    const post = await PostModel.findById(postid).populate("author");
+    const post = await PostModel.findById(postid).populate(
+      "author",
+      "-password -refreshToken"
+    );
     if (!post) {
       return next(createError.NotFound("Không tìm thấy bài viết."));
     }
-    if (post.author.id !== req.user.userid) {
+    if (post.author.id !== req.user.id) {
       return next(
         createError.Unauthorized("Bạn không được cho phép để làm điều này!")
       );
@@ -143,16 +157,15 @@ const deletePost = async (req, res, next) => {
 
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await post.remove({ session: sess });
-    post.author.post.pull(postid);
+    await PostModel.findByIdAndDelete(postid);
+    post.author.posts.pull(postid);
     await post.author.save();
     await CommentModel.deleteMany({ post: postid });
     await sess.commitTransaction();
-    res.status(200).json({
-      message: "Delete post success.",
-    });
+    res.status(200).json(post);
   } catch (error) {
-    next(createError.InternalServerError(error));
+    console.log(error);
+    next(createError.InternalServerError(error.message));
   }
 };
 
@@ -162,10 +175,20 @@ const likePost = async (req, res, next) => {
     const post = await PostModel.findByIdAndUpdate(
       postid,
       {
-        $addToSet: { likes: req.user.userid },
+        $addToSet: { likes: req.user.id },
       },
       { new: true }
-    );
+    )
+      .populate("author", "-password -refreshToken")
+      .populate({
+        path: "comments",
+        populate: [
+          {
+            path: "postedBy reply.postedBy",
+            select: "-password -refreshToken",
+          },
+        ],
+      });
     res.json({ message: "Like success.", post });
   } catch (error) {
     next(createError.InternalServerError(error.message));
@@ -178,10 +201,20 @@ const unlikePost = async (req, res, next) => {
     const post = await PostModel.findByIdAndUpdate(
       postid,
       {
-        $pull: { likes: req.user.userid },
+        $pull: { likes: req.user.id },
       },
       { new: true }
-    );
+    )
+      .populate("author", "-password -refreshToken")
+      .populate({
+        path: "comments",
+        populate: [
+          {
+            path: "postedBy reply.postedBy",
+            select: "-password -refreshToken",
+          },
+        ],
+      });
     res.json({ message: "Unlike success.", post });
   } catch (error) {
     next(createError.InternalServerError(error.message));
@@ -190,8 +223,21 @@ const unlikePost = async (req, res, next) => {
 
 const getAllPost = async (req, res, next) => {
   try {
-    const { author } = req.body;
-    const allPost = await PostModel.find({ id: author });
+    const { author } = req.params;
+    const allPost = await PostModel.find({
+      $or: [{ author: author }, { author: { $in: req.user.friends } }],
+    })
+      .populate("author", "-password -refreshToken")
+      .populate({
+        path: "comments",
+        populate: [
+          {
+            path: "postedBy reply.postedBy",
+            select: "-password -refreshToken",
+          },
+        ],
+      })
+      .sort({ createdAt: -1 });
     if (!allPost) {
       return res.json("Bạn không có bài viết nào.");
     }

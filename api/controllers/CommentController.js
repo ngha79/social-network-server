@@ -16,23 +16,29 @@ const commentPost = async (req, res, next) => {
       };
     }
     data = { text, postedBy, image, post: postid };
-    const comment = new CommentModel(data);
-    const post = await PostModel.findById(postid);
+    const post = await PostModel.findById(postid).populate(
+      "author",
+      "-password -refreshToken"
+    );
     if (!post) {
       cloudinary.api.delete_resources(image.public_id);
       return next(createError.InternalServerError("Không tìm thấy bài viết!"));
     }
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await comment.save({ session: sess });
-    post.comments.push(comment);
+    let newComment = await CommentModel.create(data);
+    post.comments.push(newComment);
     await post.save({ session: sess });
     sess.commitTransaction();
-    res.json({
-      message: "Create comment success.",
-      comment,
-    });
+
+    const comment = await CommentModel.find({ post: postid })
+      .populate("postedBy", "-password -refreshToken")
+      .populate("reply.postedBy", "-password -refreshToken")
+      .sort({ createdAt: -1 });
+    post.comments = comment;
+    res.json(post);
   } catch (error) {
+    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -54,7 +60,10 @@ const removeComment = async (req, res, next) => {
         createError.InternalServerError("Bạn không thể xóa bình luận này!")
       );
     }
-    const post = await PostModel.findById(postid);
+    const post = await PostModel.findById(postid).populate(
+      "author",
+      "-password -refreshToken"
+    );
     if (!post) {
       return next(
         createError.InternalServerError(
@@ -64,15 +73,20 @@ const removeComment = async (req, res, next) => {
     }
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await comment.remove({ session: sess });
+    await CommentModel.findByIdAndDelete(commentid);
     post.comments.pull(comment);
     await post.save({ session: sess });
     sess.commitTransaction();
 
-    res.json({
-      message: "success",
-    });
+    const comments = await CommentModel.find({ post: postid })
+      .populate("postedBy", "-password -refreshToken")
+      .populate("reply.postedBy", "-password -refreshToken")
+      .sort({ createdAt: -1 });
+    post.comments = comments;
+
+    res.json(post);
   } catch (error) {
+    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -133,10 +147,8 @@ const likeComment = async (req, res, next) => {
       },
       { new: true }
     );
-    res.json({
-      message: "Success",
-      comment,
-    });
+    console.log(comment);
+    res.json(comment);
   } catch (error) {
     console.log(error);
     next(
@@ -162,10 +174,7 @@ const removeLikeComment = async (req, res, next) => {
       },
       { new: true }
     );
-    res.json({
-      message: "Success",
-      comment,
-    });
+    res.json(comment);
   } catch (error) {
     console.log(error);
     next(
@@ -209,12 +218,7 @@ const replyComment = async (req, res, next) => {
       },
       { new: true }
     ).populate("reply.postedBy", "-password -refreshToken");
-    post.comments.push(id);
-    await post.save();
-    res.json({
-      message: "success",
-      comment,
-    });
+    res.json(comment);
   } catch (error) {
     console.log(error);
     next(
@@ -267,7 +271,7 @@ const updateReplyComment = async (req, res, next) => {
 const removeReplyComment = async (req, res, next) => {
   try {
     const { commentid, replyid } = req.params;
-    const comment = await CommentModel.findById(commentid)
+    let comment = await CommentModel.findById(commentid)
       .populate("postedBy", "-password -refreshToken")
       .populate("reply.postedBy", "-password -refreshToken");
     if (!comment) {
@@ -282,7 +286,7 @@ const removeReplyComment = async (req, res, next) => {
     });
     reply.splice(index, 1);
     await comment.save();
-    return res.status(200).json({ reply });
+    return res.status(200).json(comment);
   } catch (error) {
     console.log(error);
     next(
@@ -363,7 +367,12 @@ const getAllComment = async (req, res, next) => {
     if (!comments) {
       return next(createError.NotFound("Could not find post!"));
     }
-    res.json({ comments });
+    const post = await PostModel.findById(postid).populate(
+      "author",
+      "-password -refreshToken"
+    );
+    post.comments = comments;
+    res.json(post);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }

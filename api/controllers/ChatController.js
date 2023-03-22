@@ -6,12 +6,18 @@ const createChat = async (req, res, next) => {
   let { members } = req.body;
   const { id } = req.user;
   try {
-    members.push(id);
-    if (members.length > 2) {
-      req.body.leader = id;
+    members.concat(id);
+    // if (members.length > 2) {
+    //   req.body.leader = id;
+    // }
+    if (req.file) {
+      req.body.image = req.file.path;
+    } else {
+      req.body.image =
+        "https://res.cloudinary.com/dlzulba2u/image/upload/v1679133271/avatar/aufm0qxhfuph971kck46.png";
     }
     const newChat = await ChatModel.create(req.body);
-    res.json({ newChat });
+    res.json(newChat);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -20,8 +26,11 @@ const createChat = async (req, res, next) => {
 const findChatById = async (req, res, next) => {
   const { userId } = req.params;
   try {
-    const Chats = await ChatModel.find({ userId });
-    res.json({ Chats });
+    const Chats = await ChatModel.find({ userId }).populate(
+      "members",
+      "name _id avatar"
+    );
+    res.json(Chats);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
