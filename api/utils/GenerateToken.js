@@ -6,7 +6,7 @@ const tokenUtils = {
   generateAccessToken: async (data) => {
     if (!data) return null;
     return await jwt.sign({ data }, ACCESS_TOKEN_SECRET, {
-      expiresIn: 1000 * 60,
+      expiresIn: 10 * 60,
     });
   },
 

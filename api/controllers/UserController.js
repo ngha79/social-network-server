@@ -193,9 +193,9 @@ const deleteSendFriend = async (req, res, next) => {
   const { userReceiverId } = req.params;
   const { id } = req.user;
   try {
-    const user = await UserModel.findById(id).select("-password -refreshToken");
+    let user = await UserModel.findById(id).select("-password -refreshToken");
 
-    const userReceiver = await UserModel.findById(userReceiverId).select(
+    let userReceiver = await UserModel.findById(userReceiverId).select(
       "-password -refreshToken"
     );
 
@@ -208,6 +208,7 @@ const deleteSendFriend = async (req, res, next) => {
     user.sendInvite.pull(userReceiverId);
     await user.save();
     userReceiver.invitedFriends.pull(id);
+    await userReceiver.save();
     await session.commitTransaction();
     session.endSession();
 
@@ -236,6 +237,7 @@ const deleteInvitedFriend = async (req, res, next) => {
     user.invitedFriends.pull(userSendId);
     await user.save();
     userInvited.sendInvite.pull(id);
+    await userInvited.save();
     await session.commitTransaction();
     session.endSession();
 
@@ -261,7 +263,7 @@ const getAllSendFriend = async (req, res, next) => {
   const { id } = req.user;
   try {
     const sendInvite = await UserModel.find({
-      invitedFriends: { $in: [id] },
+      invitedFriends: { $in: id },
     })
       .select("-password -refreshToken")
       .limit(4);
@@ -275,7 +277,7 @@ const getAllInvitedFriends = async (req, res, next) => {
   const { id } = req.user;
   try {
     const invitedFriends = await UserModel.find({
-      sendInvite: { $in: [id] },
+      sendInvite: { $in: id },
     })
       .select("-password -refreshToken")
       .limit(4);

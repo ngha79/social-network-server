@@ -92,7 +92,7 @@ const forgotPassword = async (req, res, next) => {
     if (!user) return next(createError.NotFound("Tài khoản không tồn tại!"));
     const token = await user.createPasswordResetToken();
     await user.save();
-    const reserUrl = `Hi, Please follow this link to create new password for your account, click to reset password <a href='http://localhost:5000/auth/reset-password/${token}'>Click here</a>`;
+    const reserUrl = `Hi, Please follow this link to create new password for your account, click to reset password <a href='http://localhost:3000/reset-password/${token}'>Click here</a>`;
     const data = {
       to: email,
       text: `Hi ${user.name}`,
@@ -109,26 +109,32 @@ const forgotPassword = async (req, res, next) => {
 const resetPassword = async (req, res, next) => {
   const { token } = req.params;
   const { password } = req.body;
-  const { error } = validationPassword({ password });
-  if (error)
-    return next(createError.InternalServerError("Mật khẩu không hợp lệ!"));
-  const hashToken = crypto.createHash("sha256").update(token).digest("hex");
-  const user = await UserModel.findOne({
-    passwordResetToken: hashToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-  if (!user) {
-    throw createError.InternalServerError("Time expired, please try again!");
+  try {
+    const { error } = validationPassword({ password });
+    if (error)
+      return next(createError.InternalServerError("Mật khẩu không hợp lệ!"));
+    const hashToken = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await UserModel.findOne({
+      passwordResetToken: hashToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+    if (!user) {
+      return next(
+        createError.InternalServerError("Thời gian đã xác thực đã hết!")
+      );
+    }
+    user.password = password;
+    user.passwordChangeAt = Date.now();
+    user.passwordResetExpires = undefined;
+    user.passwordResetToken = undefined;
+    user.save();
+    res.status(200).json({
+      status: "Success",
+      message: "Update password success.",
+    });
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
   }
-  user.password = password;
-  user.passwordChangeAt = Date.now();
-  user.passwordResetExpires = undefined;
-  user.passwordResetToken = undefined;
-  user.save();
-  res.status(200).json({
-    status: "Success",
-    message: "Update password success.",
-  });
 };
 
 module.exports = {

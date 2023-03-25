@@ -44,6 +44,12 @@ const UserSchema = new Schema(
         ref: "Post",
       },
     ],
+    chats: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Chat",
+      },
+    ],
     avatar: {
       url: {
         type: String,

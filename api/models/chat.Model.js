@@ -19,6 +19,11 @@ const ChatSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+    type: {
+      type: String,
+      enum: ["Message", "Group"],
+      default: "Message",
+    },
   },
   { timestamps: true }
 );

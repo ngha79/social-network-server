@@ -38,7 +38,6 @@ const commentPost = async (req, res, next) => {
     post.comments = comment;
     res.json(post);
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -278,12 +277,10 @@ const removeReplyComment = async (req, res, next) => {
       return next(createError.NotFound("Could not found comment!"));
     }
     let { reply } = comment;
-    let index = -1;
-    reply.forEach((v, k) => {
-      if (v.id === replyid) {
-        index = k;
-      }
-    });
+    let index = reply.findIndex((v) => v.id === replyid);
+    if (index === -1) {
+      return next(createError.NotFound("Could not found reply!"));
+    }
     reply.splice(index, 1);
     await comment.save();
     return res.status(200).json(comment);

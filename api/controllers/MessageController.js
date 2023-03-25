@@ -1,6 +1,8 @@
 const createError = require("http-errors");
+const { default: mongoose } = require("mongoose");
 const ChatModel = require("../models/chat.Model");
 const MessageModel = require("../models/message.Model");
+const UserModel = require("../models/user.Model");
 
 const getMessages = async (req, res, next) => {
   try {
@@ -18,12 +20,22 @@ const getMessages = async (req, res, next) => {
 
 const createMessage = async (req, res, next) => {
   let { chat, senderId, receiver } = req.body;
-  let image;
   try {
+    let image, newchat;
     //create new chat if req.body.chat == null
     if (!chat) {
       const members = [senderId, receiver];
-      let newchat = await ChatModel.create({ members });
+      newchat = await ChatModel.create({ members });
+      await newchat.populate("members", "-password -refreshToken");
+      let check = newchat;
+      let objectIdArray = members.map((s) => new mongoose.Types.ObjectId(s));
+      await UserModel.updateMany(
+        { _id: { $in: objectIdArray } },
+        { $addToSet: { chats: check._id } },
+        {
+          new: true,
+        }
+      );
       req.body.chat = newchat.id;
     }
 
@@ -33,8 +45,9 @@ const createMessage = async (req, res, next) => {
       req.body.image = image;
     }
 
-    const newMessage = await MessageModel.create(req.body);
-    res.json(await newMessage.populate("senderId", "-password -refreshToken"));
+    let newMessage = await MessageModel.create(req.body);
+    await newMessage.populate("senderId", "-password -refreshToken");
+    res.json({ newMessage, newChat: newchat });
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }

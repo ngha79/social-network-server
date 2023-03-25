@@ -1,35 +1,63 @@
 const createError = require("http-errors");
 const ChatModel = require("../models/chat.Model");
 const UserModel = require("../models/user.Model");
+const MessageModel = require("../models/message.Model");
+const { default: mongoose } = require("mongoose");
 
 const createChat = async (req, res, next) => {
-  let { members } = req.body;
+  let members = req.body.members;
   const { id } = req.user;
   try {
-    members.concat(id);
-    // if (members.length > 2) {
-    //   req.body.leader = id;
-    // }
+    const array = members.split(",");
+    array.push(id);
+    req.body.members = array;
     if (req.file) {
       req.body.image = req.file.path;
     } else {
       req.body.image =
         "https://res.cloudinary.com/dlzulba2u/image/upload/v1679133271/avatar/aufm0qxhfuph971kck46.png";
     }
-    const newChat = await ChatModel.create(req.body);
+    let newChat = await ChatModel.create(req.body);
+    newChat = await newChat.populate("members", "-password -refreshToken");
+    let objectIdArray = req.body.members.map(
+      (s) => new mongoose.Types.ObjectId(s)
+    );
+    await UserModel.updateMany(
+      { _id: { $in: objectIdArray } },
+      { $addToSet: { chats: newChat.id } },
+      {
+        new: true,
+      }
+    );
     res.json(newChat);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
 };
 
-const findChatById = async (req, res, next) => {
+const findChatByIdUser = async (req, res, next) => {
   const { userId } = req.params;
   try {
-    const Chats = await ChatModel.find({ userId }).populate(
+    const Chats = await ChatModel.find({ members: { $in: userId } }).populate(
       "members",
-      "name _id avatar"
+      "-password -refreshToken"
     );
+    res.json(Chats);
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
+  }
+};
+
+const findChatByMember = async (req, res, next) => {
+  const { memberId } = req.params;
+  const { id } = req.user;
+  try {
+    const Chats = await ChatModel.find({
+      $and: [
+        { $or: [{ members: [id, memberId] }, { members: [memberId, id] }] },
+        { type: "Message" },
+      ],
+    }).populate("members", "-password -refreshToken");
     res.json(Chats);
   } catch (error) {
     next(createError.InternalServerError(error.message));
@@ -57,46 +85,76 @@ const kickMember = async (req, res, next) => {
   const { id } = req.user;
   try {
     let chat = await ChatModel.findById(chatId);
-    if (chat.leader.toString() !== id.toString()) {
+
+    if (chat.leader != id) {
       return res.json("Bạn không phải là trưởng nhóm!");
     }
-    chat.members.pull(memberId);
-    await chat.save();
-    res.json({ chat });
+    chat = await ChatModel.findByIdAndUpdate(
+      { _id: chatId },
+      {
+        $pull: { members: memberId },
+      },
+      { new: true }
+    ).populate("members", "-password -refreshToken");
+    await UserModel.findByIdAndUpdate(memberId, { $pull: { chats: chatId } });
+    res.json({ chat, memberId });
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
 };
 
 const addMember = async (req, res, next) => {
-  const { memberId, chatId } = req.params;
+  const { memberId } = req.body;
+  const { chatId } = req.params;
   const { id } = req.user;
   try {
+    if (memberId.length > 1) {
+      const array = memberId.split(",");
+      req.body.memberId = array;
+    }
     let chat = await ChatModel.findById(chatId);
-    if (chat.leader.toString() !== id.toString()) {
+    if (chat.leader != id) {
       return res.json("Bạn không phải là trưởng nhóm!");
     }
-    chat.members.addToSet(memberId);
-    await chat.save();
-    res.json({ chat });
+    chat = await ChatModel.findByIdAndUpdate(
+      { _id: chatId },
+      {
+        $addToSet: { members: memberId },
+      },
+      { new: true }
+    ).populate("members", "-password -refreshToken");
+    await UserModel.findByIdAndUpdate(memberId, {
+      $addToSet: { chats: chatId },
+    });
+
+    res.json({ chat, memberId });
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
 };
 
 const outChat = async (req, res, next) => {
-  const { chatId } = req.params;
   const { id } = req.user;
+  const { chatId } = req.params;
   try {
     let chat = await ChatModel.findById(chatId);
-    if (chat.leader.toString() === id.toString()) {
+    if (chat.leader == id) {
       return res.json("Bạn phải nhường lại chức vụ trước khi rời nhóm!");
     }
-    chat.members.pull(id);
-    await chat.save();
-    res.json({ chat });
+    chat = await ChatModel.findByIdAndUpdate(
+      { _id: chatId },
+      {
+        $pull: { members: id },
+      },
+      { new: true }
+    ).populate("members", "-password -refreshToken");
+    await UserModel.findByIdAndUpdate(id, {
+      $pull: { chats: chatId },
+    });
+
+    res.json(chat);
   } catch (error) {
-    next(createError.InternalServerError(error.message));
+    next(createError.InternalServerError(error));
   }
 };
 
@@ -105,11 +163,17 @@ const passLeader = async (req, res, next) => {
   const { id } = req.user;
   try {
     let chat = await ChatModel.findById(chatId);
-    if (chat.leader.toString() !== id.toString()) {
+    if (chat.leader != id) {
       return res.json("Bạn không phải nhóm trưởng!");
     }
-    chat = await ChatModel.findByIdAndUpdate(chatId, { leader: userId });
-    res.json({ chat });
+    chat = await ChatModel.findByIdAndUpdate(
+      chatId,
+      {
+        leader: userId,
+      },
+      { new: true }
+    ).populate("members", "-password -refreshToken");
+    res.json(chat);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -120,13 +184,21 @@ const deleteChat = async (req, res, next) => {
   const { id } = req.user;
   try {
     let chat = await ChatModel.findById(chatId);
-    if (chat.leader.toString() !== id.toString()) {
+    console.log(chat.leader);
+    if (chat.leader != id) {
       return res.json("Bạn không phải nhóm trưởng!");
     }
     await ChatModel.findByIdAndDelete(chatId);
-    res.json({
-      message: "Xóa nhóm thành công",
-    });
+    await MessageModel.deleteMany({ chat: chatId });
+    let objectIdArray = chat.members.map((s) => new mongoose.Types.ObjectId(s));
+    await UserModel.updateMany(
+      { _id: { $in: objectIdArray } },
+      { $pull: { chats: chatId } },
+      {
+        new: true,
+      }
+    );
+    res.json(chat);
   } catch (error) {
     next(createError.InternalServerError(error.message));
   }
@@ -134,7 +206,8 @@ const deleteChat = async (req, res, next) => {
 
 module.exports = {
   createChat,
-  findChatById,
+  findChatByIdUser,
+  findChatByMember,
   findChatByName,
   kickMember,
   addMember,
