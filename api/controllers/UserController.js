@@ -33,7 +33,7 @@ const changePassword = async (req, res, next) => {
 };
 
 const getUserByName = async (req, res, next) => {
-  const { name } = req.body;
+  const { name } = req.params;
   try {
     const user = await UserModel.find({
       name: {

@@ -18,7 +18,7 @@ const checkAuth = require("../middlewares/checkAuth");
 const router = express.Router();
 
 router.use(checkAuth);
-router.get("/get-user-by-name", getUserByName);
+router.get("/get-user-by-name/:name", getUserByName);
 router.get("/get-user-by-id/:id", getUserById);
 router.get("/user-is-not-friend", getUserIsNotFriend);
 router.get("/all-friend", getAllFriend);
