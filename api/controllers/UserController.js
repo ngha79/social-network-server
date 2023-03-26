@@ -141,6 +141,13 @@ const acceptFriend = async (req, res, next) => {
       return next(createError.InternalServerError("Server error!"));
     }
 
+    const Chats = await ChatModel.find({
+      $and: [
+        { $or: [{ members: [id, userAccept] }, { members: [userAccept, id] }] },
+        { type: "Message" },
+      ],
+    });
+
     // start session
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -150,7 +157,9 @@ const acceptFriend = async (req, res, next) => {
     friend.friends.addToSet(id);
     friend.sendInvite.pull(id);
     await friend.save();
-    await ChatModel.create({ members: [userAccept, id] });
+    if (!Chats) {
+      await ChatModel.create({ members: [userAccept, id] });
+    }
     session.commitTransaction();
     session.endSession();
     //end session
