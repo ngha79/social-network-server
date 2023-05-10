@@ -38,7 +38,6 @@ const getPostByUserId = async (req, res, next) => {
     if (!posts) return next(createError.InternalServerError("Server error!"));
     res.json({ posts });
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -84,7 +83,6 @@ const createPost = async (req, res, next) => {
     await user.save({ session: sess });
     await sess.commitTransaction();
   } catch (error) {
-    console.log(error);
     cloudinary.api.delete_resources(imageId);
     return next(
       createError.InternalServerError(
@@ -164,7 +162,6 @@ const deletePost = async (req, res, next) => {
     await sess.commitTransaction();
     res.status(200).json(post);
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -243,7 +240,6 @@ const getAllPost = async (req, res, next) => {
     }
     return res.json(allPost);
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error));
   }
 };

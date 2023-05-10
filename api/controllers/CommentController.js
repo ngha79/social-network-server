@@ -85,7 +85,6 @@ const removeComment = async (req, res, next) => {
 
     res.json(post);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -122,7 +121,6 @@ const updateComment = async (req, res, next) => {
       comment,
     });
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -146,10 +144,8 @@ const likeComment = async (req, res, next) => {
       },
       { new: true }
     );
-    console.log(comment);
     res.json(comment);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -175,7 +171,6 @@ const removeLikeComment = async (req, res, next) => {
     );
     res.json(comment);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -219,7 +214,6 @@ const replyComment = async (req, res, next) => {
     ).populate("reply.postedBy", "-password -refreshToken");
     res.json(comment);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -258,7 +252,6 @@ const updateReplyComment = async (req, res, next) => {
     await comment.save();
     return res.status(200).json({ reply });
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -285,7 +278,6 @@ const removeReplyComment = async (req, res, next) => {
     await comment.save();
     return res.status(200).json(comment);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -315,7 +307,6 @@ const likeReplyComment = async (req, res, next) => {
     await comment.save();
     res.json(comment);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"
@@ -345,7 +336,6 @@ const removelikeReplyComment = async (req, res, next) => {
     await comment.save();
     res.json(comment);
   } catch (error) {
-    console.log(error);
     next(
       createError.InternalServerError(
         "Some thing went wrong, please try again!"

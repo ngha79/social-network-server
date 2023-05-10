@@ -184,7 +184,6 @@ const deleteChat = async (req, res, next) => {
   const { id } = req.user;
   try {
     let chat = await ChatModel.findById(chatId);
-    console.log(chat.leader);
     if (chat.leader != id) {
       return res.json("Bạn không phải nhóm trưởng!");
     }

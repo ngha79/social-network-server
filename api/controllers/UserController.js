@@ -45,7 +45,6 @@ const getUserByName = async (req, res, next) => {
     }
     res.json(user);
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -80,7 +79,6 @@ const getUserById = async (req, res, next) => {
     }
     res.json(user);
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };

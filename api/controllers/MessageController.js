@@ -13,7 +13,6 @@ const getMessages = async (req, res, next) => {
     );
     res.json({ chatId: chatId, messages });
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError("Server error"));
   }
 };

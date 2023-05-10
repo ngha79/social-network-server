@@ -32,7 +32,6 @@ const register = async (req, res, next) => {
     const newUser = await UserModel.create(req.body);
     return res.json({ message: "Tạo tài khoản thành công.", newUser });
   } catch (error) {
-    console.log(error.message);
     next(createError.InternalServerError(error.message));
   }
 };
@@ -60,7 +59,6 @@ const login = async (req, res, next) => {
 
     return res.json({ token, refreshToken, user });
   } catch (error) {
-    console.log(error);
     next(createError.InternalServerError(error.message));
   }
 };

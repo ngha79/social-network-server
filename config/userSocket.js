@@ -1,27 +1,27 @@
-const users = [];
+let users = [];
 
 // Join user to chat
-function userJoin(id, userId, chatId) {
-  const user = { id, userId, chatId };
-
-  users.push(user);
-  console.log(users);
-
-  return user;
+function userJoin(userId, socketId) {
+  users = users.filter((user) => user.user._id !== userId._id);
+  users.push({ user: userId, socketId });
+  return;
 }
 
 // Get current user
 function getCurrentUser(id) {
-  return users.filter((user) => user.id === id);
+  const user = users.filter((user) => user.user._id === id);
+  return user;
 }
 
 // User leaves chat
 function userLeave(id) {
-  const index = users.findIndex((user) => user.id === id);
+  const user = users.filter((user) => user.user._id !== id);
+  return user;
+}
 
-  if (index !== -1) {
-    return users.splice(index, 1)[0];
-  }
+function userLeaveSocket(id) {
+  const userDis = users.filter((user) => user.socketId === id);
+  return users.filter((user) => user.user._id !== userDis[0].user._id);
 }
 //Check user
 function checkUser(id, chatId) {
@@ -44,4 +44,5 @@ module.exports = {
   userLeave,
   getRoomUsers,
   checkUser,
+  userLeaveSocket,
 };
