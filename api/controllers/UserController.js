@@ -273,7 +273,7 @@ const getAllSendFriend = async (req, res, next) => {
       invitedFriends: { $in: id },
     })
       .select("-password -refreshToken")
-      .limit(4);
+      .limit(20);
     res.json(sendInvite);
   } catch (error) {
     next(createError.InternalServerError(error.message));
@@ -287,7 +287,7 @@ const getAllInvitedFriends = async (req, res, next) => {
       sendInvite: { $in: id },
     })
       .select("-password -refreshToken")
-      .limit(4);
+      .limit(20);
     res.json(invitedFriends);
   } catch (error) {
     next(createError.InternalServerError(error.message));
@@ -312,7 +312,67 @@ const getUserIsNotFriend = async (req, res, next) => {
         },
       ],
     })
-      .limit(4)
+      .limit(20)
+      .select("_id avatar name");
+    res.json(isNotFriend);
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
+  }
+};
+
+const getAllSendFriendMore = async (req, res, next) => {
+  const { id } = req.user;
+  const { skip } = req.query;
+  try {
+    const sendInvite = await UserModel.find({
+      invitedFriends: { $in: id },
+    })
+      .select("-password -refreshToken")
+      .limit(20)
+      .skip(skip);
+    res.json(sendInvite);
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
+  }
+};
+
+const getAllInvitedFriendsMore = async (req, res, next) => {
+  const { id } = req.user;
+  const { skip } = req.query;
+  try {
+    const invitedFriends = await UserModel.find({
+      sendInvite: { $in: id },
+    })
+      .select("-password -refreshToken")
+      .limit(20)
+      .skip(skip);
+    res.json(invitedFriends);
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
+  }
+};
+
+const getUserIsNotFriendMore = async (req, res, next) => {
+  const { id } = req.user;
+  const { skip } = req.query;
+  try {
+    const user = await UserModel.findById(id);
+    const isNotFriend = await UserModel.find({
+      $or: [
+        {
+          _id: {
+            $nin: [
+              ...user.friends,
+              id,
+              ...user.sendInvite,
+              ...user.invitedFriends,
+            ],
+          },
+        },
+      ],
+    })
+      .limit(20)
+      .skip(skip)
       .select("_id avatar name");
     res.json(isNotFriend);
   } catch (error) {
@@ -333,4 +393,7 @@ module.exports = {
   getAllSendFriend,
   getAllInvitedFriends,
   getUserIsNotFriend,
+  getAllSendFriendMore,
+  getAllInvitedFriendsMore,
+  getUserIsNotFriendMore,
 };

@@ -21,7 +21,9 @@ function userLeave(id) {
 
 function userLeaveSocket(id) {
   const userDis = users.filter((user) => user.socketId === id);
-  return users.filter((user) => user.user._id !== userDis[0].user._id);
+  if (userDis.length !== 0) {
+    return users.filter((user) => user.user._id !== userDis[0].user._id);
+  }
 }
 //Check user
 function checkUser(id, chatId) {

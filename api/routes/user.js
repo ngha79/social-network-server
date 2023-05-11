@@ -12,6 +12,9 @@ const {
   getAllInvitedFriends,
   deleteInvitedFriend,
   getUserIsNotFriend,
+  getUserIsNotFriendMore,
+  getAllSendFriendMore,
+  getAllInvitedFriendsMore,
 } = require("../controllers/UserController");
 const checkAuth = require("../middlewares/checkAuth");
 
@@ -24,6 +27,9 @@ router.get("/user-is-not-friend", getUserIsNotFriend);
 router.get("/all-friend", getAllFriend);
 router.get("/all-send-friend", getAllSendFriend);
 router.get("/all-invited-friend", getAllInvitedFriends);
+router.get("/more-friend", getUserIsNotFriendMore);
+router.get("/send-friend", getAllSendFriendMore);
+router.get("/invited-friend", getAllInvitedFriendsMore);
 router.put("/send-friend-invitation/:userInvite", sendFriendInvitation);
 router.put("/accept-friend/:userAccept", acceptFriend);
 router.put("/delete-friend/:friendId", deleteFriend);

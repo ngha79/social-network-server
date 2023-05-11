@@ -9,8 +9,12 @@ const {
 
 const socket = (io) => {
   io.on("connect", (socket) => {
-    socket.on("joinRoom", ({ chatId, userId }) => {
-      socket.join(chatId);
+    // socket.on("joinRoom", ({ chatId, userId }) => {
+    //   socket.join(chatId);
+    // });
+
+    socket.on("join chats", (chats) => {
+      chats.map((chat) => socket.join(chat._id));
     });
 
     socket.on("set user", (user) => {
@@ -23,18 +27,22 @@ const socket = (io) => {
       const users = group.members.map((user) => {
         return getCurrentUser(user._id);
       });
-      users.map((user) => {
-        return socket.to(user[0].socketId).emit("create group", group);
-      });
+      if (users.length !== 0) {
+        users.map((user) => {
+          return socket.to(user[0].socketId).emit("create group", group);
+        });
+      }
     });
 
     socket.on("new chat from user", (data) => {
       const users = data.members.map((user) => {
         return getCurrentUser(user._id);
       });
-      users.map((user) => {
-        return socket.to(user[0].socketId).emit("new message chat", data);
-      });
+      if (users.length !== 0) {
+        users.map((user) => {
+          return socket.to(user[0].socketId).emit("new message chat", data);
+        });
+      }
       // socket.to(chatId).emit("receiverMessage", { receiver: msg });
     });
 
@@ -60,11 +68,13 @@ const socket = (io) => {
 
     socket.on("deleteChat", ({ msg, chatId }) => {
       const users = msg.members.map((user) => getCurrentUser(user));
-      users.map((user) => {
-        return socket
-          .to(user[0].socketId)
-          .emit("deleteChatSend", { updateChat: msg });
-      });
+      if (users.length !== 0) {
+        users.map((user) => {
+          return socket
+            .to(user[0].socketId)
+            .emit("deleteChatSend", { updateChat: msg });
+        });
+      }
       socket.leave(chatId);
     });
 
@@ -72,11 +82,13 @@ const socket = (io) => {
       const users = memberId.map((user) => {
         return getCurrentUser(user);
       });
-      users.map((user) => {
-        return socket
-          .to(user[0].socketId)
-          .emit("addMemberSend", { updateChat: msg, memberId: memberId });
-      });
+      if (users.length !== 0) {
+        users.map((user) => {
+          return socket
+            .to(user[0].socketId)
+            .emit("addMemberSend", { updateChat: msg, memberId: memberId });
+        });
+      }
       socket
         .to(chatId)
         .emit("addMemberSend", { updateChat: msg, memberId: memberId });
@@ -84,9 +96,11 @@ const socket = (io) => {
 
     socket.on("kickMember", ({ msg, chatId, memberId }) => {
       const users = getCurrentUser(memberId);
-      socket
-        .to(users[0].socketId)
-        .emit("kickMemberSend", { updateChat: msg, memberId: memberId });
+      if (users.length !== 0) {
+        socket
+          .to(users[0].socketId)
+          .emit("kickMemberSend", { updateChat: msg, memberId: memberId });
+      }
       socket
         .to(chatId)
         .emit("kickMemberSend", { updateChat: msg, memberId: memberId });
@@ -94,11 +108,13 @@ const socket = (io) => {
 
     socket.on("exitChat", ({ msg, chatId }) => {
       const users = msg.members.map((user) => getCurrentUser(user._id));
-      users.map((user) => {
-        return socket
-          .to(user[0].socketId)
-          .emit("exitChatSend", { updateChat: msg });
-      });
+      if (users.length !== 0) {
+        users.map((user) => {
+          return socket
+            .to(user[0].socketId)
+            .emit("exitChatSend", { updateChat: msg });
+        });
+      }
       socket.leave(chatId);
     });
 
