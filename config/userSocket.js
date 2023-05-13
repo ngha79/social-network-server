@@ -1,50 +1,67 @@
-let users = [];
+const { createClient } = require("redis");
+
+const redis = createClient({
+  password: process.env.PASSWORD_REDIS,
+  socket: {
+    host: process.env.HOST_REDIS,
+    port: process.env.PORT_REDIS,
+  },
+});
+redis.on("error", (err) => console.log("Redis Error: ", err));
+redis.on("connect", () => console.log("Redis Connected"));
+redis.connect();
 
 // Join user to chat
-function userJoin(userId, socketId) {
-  users = users.filter((user) => user.user._id !== userId._id);
-  users.push({ user: userId, socketId });
-  return;
-}
+const userJoin = async (userId, socketId) => {
+  const user = {
+    userId: userId,
+    socketId: socketId,
+    isOnline: "true",
+    lastLogin: "null",
+  };
+  await redis.hSet(`user:${userId}`, user);
+};
 
 // Get current user
-function getCurrentUser(id) {
-  const user = users.filter((user) => user.user._id === id);
+const getCurrentUser = async (userId) => {
+  let user = await redis.hGetAll(`user:${userId}`);
   return user;
-}
+};
 
 // User leaves chat
-function userLeave(id) {
-  const user = users.filter((user) => user.user._id !== id);
-  return user;
-}
-
-function userLeaveSocket(id) {
-  const userDis = users.filter((user) => user.socketId === id);
-  if (userDis.length !== 0) {
-    return users.filter((user) => user.user._id !== userDis[0].user._id);
+const userLeave = async (userId) => {
+  const user = await redis.hGetAll(`user:${userId}`);
+  if (user.userId) {
+    await redis.hSet(`user:${userId}`, {
+      isOnline: "false",
+      lastLogin: new Date().toString(),
+    });
   }
-}
-//Check user
-function checkUser(id, chatId) {
-  return users.some((user) => {
-    if (user.id === id && chatId === user.chatId) {
-      return true;
-    }
-    return false;
-  });
-}
+};
 
-// Get room users
-function getRoomUsers(chatId) {
-  return users.filter((user) => user.chatId === chatId);
-}
+const userLeaveSocket = async (userId) => {
+  const user = await redis.hGetAll(`user:${userId}`);
+  if (user.userId) {
+    await redis.hSet(`user:${userId}`, {
+      ...user,
+      isOnline: "false",
+      lastLogin: new Date().toString(),
+    });
+  }
+};
+
+const getUserOnline = async (userId, cb) => {
+  const cachedUser = await redis.hGetAll(`user:${userId}`);
+  if (cachedUser.userId) {
+    const { isOnline, lastLogin } = cachedUser;
+    cb({ isOnline, lastLogin });
+  }
+};
 
 module.exports = {
   userJoin,
   getCurrentUser,
   userLeave,
-  getRoomUsers,
-  checkUser,
   userLeaveSocket,
+  getUserOnline,
 };

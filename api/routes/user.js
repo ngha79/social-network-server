@@ -15,8 +15,10 @@ const {
   getUserIsNotFriendMore,
   getAllSendFriendMore,
   getAllInvitedFriendsMore,
+  updateUserInfo,
 } = require("../controllers/UserController");
 const checkAuth = require("../middlewares/checkAuth");
+const { uploadCloud } = require("../middlewares/cloudinary");
 
 const router = express.Router();
 
@@ -35,6 +37,7 @@ router.put("/accept-friend/:userAccept", acceptFriend);
 router.put("/delete-friend/:friendId", deleteFriend);
 router.put("/delete-send-friend/:userReceiverId", deleteSendFriend);
 router.put("/delete-invited-friend/:userSendId", deleteInvitedFriend);
+router.put("/update-user-info", uploadCloud.single("avatar"), updateUserInfo);
 
 router.post("/change-password", changePassword);
 

@@ -380,6 +380,27 @@ const getUserIsNotFriendMore = async (req, res, next) => {
   }
 };
 
+const updateUserInfo = async (req, res, next) => {
+  const { _id } = req.user;
+  try {
+    let user = await UserModel.findById(_id);
+    if (!user) return next(createError.InternalServerError("Server error!"));
+    if (req.file) {
+      let avatar = { url: req.file.path, public_id: req.file.filename };
+      req.body.avatar = avatar;
+    }
+    user = await UserModel.findByIdAndUpdate(_id, req.body, {
+      new: true,
+    }).select("-password -refreshToken");
+    res.json({
+      message: "Cập nhật thành công.",
+      user,
+    });
+  } catch (error) {
+    next(createError.InternalServerError(error.message));
+  }
+};
+
 module.exports = {
   changePassword,
   getUserByName,
@@ -396,4 +417,5 @@ module.exports = {
   getAllSendFriendMore,
   getAllInvitedFriendsMore,
   getUserIsNotFriendMore,
+  updateUserInfo,
 };
