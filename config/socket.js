@@ -31,6 +31,11 @@ const socket = (io) => {
         const userget = await getCurrentUser(user._id);
         return socket.to(userget.socketId).emit("create group", group);
       });
+      socket.join(group._id);
+    });
+
+    socket.on("join chat", (chatId) => {
+      socket.join(chatId);
     });
 
     socket.on("new chat from user", (data) => {
