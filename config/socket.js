@@ -121,8 +121,8 @@ const socket = (io) => {
       }
     );
 
-    socket.on("add friend", async (user, userReceiver) => {
-      const getUser = getCurrentUser(userReceiver);
+    socket.on("add friend", async async (user, userReceiver) => {
+      const getUser = await getCurrentUser(userReceiver);
       if (getUser) {
         return socket.to(getUser.socketId).emit("add friend invited", user);
       }
