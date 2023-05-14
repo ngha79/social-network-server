@@ -15,6 +15,7 @@ const socket = (io) => {
       if (userId) {
         socket.userId = userId;
         userJoin(userId, socket.id);
+        socket.join(userId);
       }
     });
 
@@ -28,8 +29,7 @@ const socket = (io) => {
 
     socket.on("create group chat", async (group) => {
       group.members.map(async (user) => {
-        const userget = await getCurrentUser(user._id);
-        return socket.to(userget.socketId).emit("create group", group);
+        return socket.to(user._id).emit("create group", group);
       });
       socket.join(group._id);
     });
@@ -40,14 +40,13 @@ const socket = (io) => {
 
     socket.on("new chat from user", (data) => {
       data.members.map(async (user) => {
-        const userget = await getCurrentUser(user._id);
-        return socket.to(userget.socketId).emit("new message chat", data);
+        return socket.to(user._id).emit("new message chat", data);
       });
       // socket.to(chatId).emit("receiverMessage", { receiver: msg });
     });
 
     socket.on("addMessage", ({ msg, chatId }) => {
-      socket.broadcast.to(chatId).emit("receiverMessage", { receiver: msg });
+      socket.to(chatId).emit("receiverMessage", { receiver: msg });
     });
 
     socket.on("delMessage", ({ msg, chatId }) => {
@@ -68,19 +67,15 @@ const socket = (io) => {
 
     socket.on("deleteChat", ({ msg, chatId }) => {
       msg.members.map(async (user) => {
-        const get = await getCurrentUser(user);
-        return socket
-          .to(get.socketId)
-          .emit("deleteChatSend", { updateChat: msg });
+        return socket.to(user).emit("deleteChatSend", { updateChat: msg });
       });
       socket.leave(chatId);
     });
 
     socket.on("addMember", ({ msg, chatId, memberId }) => {
       memberId.map(async (user) => {
-        const get = await getCurrentUser(user);
         return socket
-          .to(get.socketId)
+          .to(user)
           .emit("addMemberSend", { updateChat: msg, memberId: memberId });
       });
 
@@ -90,12 +85,9 @@ const socket = (io) => {
     });
 
     socket.on("kickMember", async ({ msg, chatId, memberId }) => {
-      const users = await getCurrentUser(memberId);
-      if (users) {
-        socket
-          .to(users.socketId)
-          .emit("kickMemberSend", { updateChat: msg, memberId: memberId });
-      }
+      socket
+        .to(memberId)
+        .emit("kickMemberSend", { updateChat: msg, memberId: memberId });
       socket
         .to(chatId)
         .emit("kickMemberSend", { updateChat: msg, memberId: memberId });
@@ -103,11 +95,12 @@ const socket = (io) => {
 
     socket.on("exitChat", ({ msg, chatId }) => {
       msg.members.map(async (user) => {
-        const get = await getCurrentUser(user._id);
-        return socket
-          .to(get.socketId)
-          .emit("exitChatSend", { updateChat: msg });
+        return socket.to(user._id).emit("exitChatSend", { updateChat: msg });
       });
+      socket.leave(chatId);
+    });
+
+    socket.on("leave room", (chatId) => {
       socket.leave(chatId);
     });
 
@@ -127,42 +120,25 @@ const socket = (io) => {
     );
 
     socket.on("add friend", async (user, userReceiver) => {
-      const getUser = await getCurrentUser(userReceiver);
-      if (getUser) {
-        return socket.to(getUser.socketId).emit("add friend invited", user);
-      }
+      return socket.to(userReceiver).emit("add friend invited", user);
     });
 
     socket.on("unfriend", async (user, userReceiver) => {
-      const getUser = await getCurrentUser(userReceiver);
-      if (getUser) {
-        return socket.to(getUser.socketId).emit("send unfriend invited", user);
-      }
+      return socket.to(userReceiver).emit("send unfriend invited", user);
     });
 
     socket.on("accept friend", async (user, userReceiver) => {
-      const getUser = await getCurrentUser(userReceiver);
-      if (getUser) {
-        return socket.to(getUser.socketId).emit("accept invited friend", user);
-      }
+      return socket.to(userReceiver).emit("accept invited friend", user);
     });
 
     socket.on("delete send friend", async (user, userReceiver) => {
-      const getUser = await getCurrentUser(userReceiver);
-      if (getUser) {
-        return socket
-          .to(getUser.socketId)
-          .emit("delete send invited friend", user);
-      }
+      return socket.to(userReceiver).emit("delete send invited friend", user);
     });
 
     socket.on("refuse invited friend", async (user, userReceiver) => {
-      const getUser = await getCurrentUser(userReceiver);
-      if (getUser) {
-        return socket
-          .to(getUser.socketId)
-          .emit("delete refused invited friend", user);
-      }
+      return socket
+        .to(userReceiver)
+        .emit("delete refused invited friend", user);
     });
 
     socket.on("call video send", (chatId) => {
