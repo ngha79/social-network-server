@@ -168,7 +168,6 @@ const socket = (io) => {
     socket.on("call video send", (chatId) => {
       if (chatId) {
         socket.to(chatId).emit("call video receiver", chatId);
-        socket.chatId = chatId;
       }
     });
 
@@ -177,11 +176,8 @@ const socket = (io) => {
     });
 
     socket.on("call video cancel", (chatId) => {
-      if (chatId) socket.to(chatId).emit("call video cancel receiver", chatId);
-      if (socket.chatId) {
-        socket
-          .to(socket.chatId)
-          .emit("call video cancel receiver", socket.chatId);
+      if (chatId) {
+        socket.to(chatId).emit("call video cancel receiver", chatId);
       }
     });
 
